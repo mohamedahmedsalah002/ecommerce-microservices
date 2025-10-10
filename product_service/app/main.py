@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database.connection import connect_to_mongo, close_mongo_connection
-from app.controllers.user_controller import router as user_router
+from app.controllers.product_controller import product_router, category_router
 from app.utils.kafka_producer import kafka_producer
 
 
@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="User Service API",
-    description="Microservice for user management with authentication",
+    title="Product Service API",
+    description="Microservice for product and category management with comprehensive CRUD operations",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -36,19 +36,20 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(user_router)
+app.include_router(product_router)
+app.include_router(category_router)
 
 
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {"message": "User Service API", "version": "1.0.0"}
+    return {"message": "Product Service API", "version": "1.0.0"}
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "user-service"}
+    return {"status": "healthy", "service": "product-service"}
 
 
 # Exception handlers
@@ -88,6 +89,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,  # Different port from User Service
         reload=True
     )
+

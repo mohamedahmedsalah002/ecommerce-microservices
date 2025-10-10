@@ -1,9 +1,11 @@
 from typing import Optional
+from datetime import datetime
 from fastapi import HTTPException, status
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.user_schemas import UserCreate, UserUpdate, UserPasswordUpdate, UserResponse
 from app.utils.auth import AuthUtils
+from app.utils.kafka_producer import publish_user_registered_event, publish_user_login_event, publish_user_updated_event
 
 
 class UserService:
@@ -34,6 +36,15 @@ class UserService:
         
         # Create user in database
         user = await self.user_repository.create_user(user_create_data)
+        
+        # Publish user registered event
+        user_event_data = {
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "created_at": user.created_at.isoformat()
+        }
+        await publish_user_registered_event(user_event_data)
         
         # Return user response
         return UserResponse(
@@ -73,6 +84,14 @@ class UserService:
         access_token = self.auth_utils.create_access_token(
             data={"sub": str(user.id), "email": user.email}
         )
+        
+        # Publish user login event
+        login_event_data = {
+            "id": str(user.id),
+            "email": user.email,
+            "login_timestamp": datetime.utcnow().isoformat()
+        }
+        await publish_user_login_event(login_event_data)
         
         return {
             "access_token": access_token,

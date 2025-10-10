@@ -2,26 +2,36 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database.connection import connect_to_mongo, close_mongo_connection
-from app.controllers.user_controller import router as user_router
+from app.controllers.order_controller import router as order_router
 from app.utils.kafka_producer import kafka_producer
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
+    logger.info("Starting Order Service...")
     await connect_to_mongo()
     await kafka_producer.start()
+    logger.info("Order Service started successfully")
+    
     yield
+    
     # Shutdown
+    logger.info("Shutting down Order Service...")
     await kafka_producer.stop()
     await close_mongo_connection()
+    logger.info("Order Service shut down successfully")
 
 
 # Create FastAPI application
 app = FastAPI(
-    title="User Service API",
-    description="Microservice for user management with authentication",
+    title="Order Service API",
+    description="Microservice for order management and processing",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -36,19 +46,19 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(user_router)
+app.include_router(order_router)
 
 
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {"message": "User Service API", "version": "1.0.0"}
+    return {"message": "Order Service API", "version": "1.0.0"}
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "user-service"}
+    return {"status": "healthy", "service": "order-service"}
 
 
 # Exception handlers
@@ -71,8 +81,8 @@ async def general_exception_handler(request, exc):
     """Handle general exceptions"""
     from fastapi.responses import JSONResponse
     import traceback
-    print(f"Unhandled exception: {exc}")
-    print(traceback.format_exc())
+    logger.error(f"Unhandled exception: {exc}")
+    logger.error(traceback.format_exc())
     return JSONResponse(
         status_code=500,
         content={
@@ -88,6 +98,8 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8003,
         reload=True
     )
+
+
